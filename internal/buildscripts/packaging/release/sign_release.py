@@ -28,10 +28,11 @@ from helpers.util import (
 
 def main():
     args, asset = get_args_and_asset()
-    signing_args = {}
-    for key, val in vars(args).items():
-        if key in ("chaperone_token", "staging_token", "staging_user"):
-            signing_args[key] = val
+    signing_args = {
+        key: val
+        for key, val in vars(args).items()
+        if key in ("chaperone_token", "staging_token", "staging_user")
+    }
 
     if asset:
         if args.no_push:
@@ -53,16 +54,16 @@ def main():
         elif asset.component == "rpm":
             # Sign rpm, release to artifactory, and sign metadata
             release_rpm_to_artifactory(asset, args, **signing_args)
-        elif asset.component == "exe":
+        elif (
+            asset.component == "exe"
+            or asset.component != "msi"
+            and asset.component == "osx"
+        ):
             # Sign Windows executable
             sign_exe(asset, args, **signing_args)
         elif asset.component == "msi":
             # Sign MSI and release to S3
             release_msi_to_s3(asset, args, **signing_args)
-        elif asset.component == "osx":
-            # Sign OSX executable
-            sign_exe(asset, args, **signing_args)
-
     # Release installer scripts to S3
     if args.installers and not args.no_push:
         release_installers_to_s3(force=args.force)

@@ -48,10 +48,7 @@ def get_package(distro, name, path):
     else:
         pkg_paths = glob.glob(str(path / f"{name}*x86_64.rpm"))
 
-    if pkg_paths:
-        return sorted(pkg_paths)[-1]
-    else:
-        return None
+    return sorted(pkg_paths)[-1] if pkg_paths else None
 
 
 def get_libcap_command(container):
@@ -141,7 +138,8 @@ def test_collector_package_install(distro):
     + [pytest.param(distro, marks=pytest.mark.rpm) for distro in RPM_DISTROS],
     )
 def test_collector_package_upgrade(distro):
-    install_cmd = f"sh /test/install.sh -- testing123 --realm test --without-fluentd --collector-version 0.35.0"
+    install_cmd = "sh /test/install.sh -- testing123 --realm test --without-fluentd --collector-version 0.35.0"
+
 
     pkg_path = get_package(distro, PKG_NAME, PKG_DIR)
     assert pkg_path, f"{PKG_NAME} package not found in {PKG_DIR}"

@@ -146,7 +146,10 @@ def submit_signing_request(src, sign_type, token):
     headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
     data = {"artifact_url": src, "sign_type": sign_type, "project_key": "otel-collector"}
 
-    resp = requests.post(CHAPERONE_API_URL + "/SIGN/submit", headers=headers, data=data)
+    resp = requests.post(
+        f"{CHAPERONE_API_URL}/SIGN/submit", headers=headers, data=data
+    )
+
 
     assert resp.status_code == 200, f"signing request failed:\n{resp.reason}"
     assert "item_key" in resp.json().keys(), f"'item_key' not found in response:\n{resp.text}"
@@ -376,11 +379,14 @@ def release_rpm_to_artifactory(asset, args, **signing_args):
     metadata_url = f"{ARTIFACTORY_RPM_REPO_URL}/{args.stage}/{arch}/repodata/repomd.xml"
     dest_url = f"{ARTIFACTORY_RPM_REPO_URL}/{args.stage}/{arch}/{asset.name}"
 
-    if not args.no_push:
-        if not args.force and artifactory_file_exists(dest_url, user, token):
-            resp = input(f"{dest_url} already exists.\nOverwrite? [y/N]: ")
-            if resp.lower() not in ("y", "yes"):
-                sys.exit(1)
+    if (
+        not args.no_push
+        and not args.force
+        and artifactory_file_exists(dest_url, user, token)
+    ):
+        resp = input(f"{dest_url} already exists.\nOverwrite? [y/N]: ")
+        if resp.lower() not in ("y", "yes"):
+            sys.exit(1)
 
     print(f"Signing {asset.name} (may take 10+ minutes):")
     if not asset.sign(overwrite=args.force, timeout=args.timeout, **signing_args):
@@ -402,10 +408,9 @@ def release_rpm_to_artifactory(asset, args, **signing_args):
 
 def s3_file_exists(s3_client, path):
     results = s3_client.list_objects(Bucket=S3_BUCKET, Prefix=f"{path}")
-    for content in results.get("Contents", []):
-        if content.get("Key") == path:
-            return True
-    return False
+    return any(
+        content.get("Key") == path for content in results.get("Contents", [])
+    )
 
 
 def invalidate_cloudfront(paths):
@@ -508,7 +513,7 @@ def release_msi_to_s3(asset, args, **signing_args):
             latest_txt = os.path.join(tmpdir, "latest.txt")
             match = re.match(f"^{PACKAGE_NAME}-(\d+\.\d+\.\d+(\.\d+)?)-amd64.msi$", asset.name)
             assert match, f"Failed to get version from '{asset.name}'!"
-            msi_version = match.group(1)
+            msi_version = match[1]
             with open(latest_txt, "w") as fd:
                 fd.write(msi_version)
             s3_latest_path = f"{S3_MSI_BASE_DIR}/{args.stage}/latest.txt"
@@ -522,13 +527,10 @@ def get_github_release(repo_name, tag=None, token=None):
     repo = gh.get_repo(repo_name)
 
     if tag:
-        github_release = repo.get_release(tag)
-    else:
-        github_releases = repo.get_releases()
-        assert github_releases, f"No releases found for '{repo_name}' repository!"
-        github_release = github_releases[0]
-
-    return github_release
+        return repo.get_release(tag)
+    github_releases = repo.get_releases()
+    assert github_releases, f"No releases found for '{repo_name}' repository!"
+    return github_releases[0]
 
 
 def download_github_assets(github_release, args):

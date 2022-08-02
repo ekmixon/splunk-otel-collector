@@ -64,7 +64,7 @@ def add_signing_args(parser):
 
 
 def check_signing_args(args):
-    assert args.chaperone_token, f"Chaperone token not set"
+    assert args.chaperone_token, "Chaperone token not set"
     assert args.staging_user, f"Staging username not set for {STAGING_URL}"
     assert args.staging_token, f"Staging token not set for {STAGING_URL}"
 
@@ -188,10 +188,7 @@ def get_args_and_asset():
 
     assert args.path or args.installers, "Either --path or --installers must be specified"
 
-    asset = None
-    if args.path:
-        asset = get_asset(args.path)
-
+    asset = get_asset(args.path) if args.path else None
     if asset and not (asset.component == "msi" and args.no_sign_msi):
         check_signing_args(args)
 
